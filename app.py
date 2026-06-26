@@ -83,16 +83,21 @@ def index():
     return render_template('index.html', mappings=mappings)
 
 
+WECHAT_BASE_URL = 'https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key='
+
+
 @app.route('/mapping/add', methods=['POST'])
 def add_mapping():
     """新增映射"""
     name = request.form.get('name', '').strip()
     gitlab_token = request.form.get('gitlab_token', '').strip()
-    wechat_url = request.form.get('wechat_url', '').strip()
+    wechat_key = request.form.get('wechat_key', '').strip()
     events = request.form.get('events', '*').strip()
 
-    if not name or not wechat_url:
+    if not name or not wechat_key:
         return redirect(url_for('index'))
+
+    wechat_url = WECHAT_BASE_URL + wechat_key
 
     # 如果没填 token，自动生成
     if not gitlab_token:
@@ -113,12 +118,14 @@ def edit_mapping(mapping_id):
     """编辑映射"""
     name = request.form.get('name', '').strip()
     gitlab_token = request.form.get('gitlab_token', '').strip()
-    wechat_url = request.form.get('wechat_url', '').strip()
+    wechat_key = request.form.get('wechat_key', '').strip()
     events = request.form.get('events', '*').strip()
     enabled = 1 if request.form.get('enabled') else 0
 
-    if not name or not wechat_url:
+    if not name or not wechat_key:
         return redirect(url_for('index'))
+
+    wechat_url = WECHAT_BASE_URL + wechat_key
 
     models.update_mapping(mapping_id, name, gitlab_token, wechat_url, events, enabled)
     return redirect(url_for('index'))
