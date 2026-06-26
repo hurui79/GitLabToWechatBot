@@ -1,0 +1,16 @@
+[Unit]
+Description=GitLab to WeChat Bot Bridge
+After=network.target
+
+[Service]
+Type=simple
+User=www-data
+WorkingDirectory=/opt/gitlab-wechat-bot
+ExecStart=/opt/gitlab-wechat-bot/venv/bin/python app.py
+Restart=always
+RestartSec=5
+Environment=PORT=5000
+Environment=DB_PATH=/opt/gitlab-wechat-bot/data/webhooks.db
+
+[Install]
+WantedBy=multi-user.target

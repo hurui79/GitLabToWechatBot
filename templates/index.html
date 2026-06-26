@@ -1,0 +1,167 @@
+{% extends "base.html" %}
+{% block title %}配置管理 - GitLab → 企业微信{% endblock %}
+{% block content %}
+<div class="page-header">
+    <h1>Webhook 映射管理</h1>
+    <p class="subtitle">配置 GitLab webhook 与企业微信机器人的对应关系</p>
+</div>
+
+<!-- 新增表单 -->
+<div class="card">
+    <h2>➕ 新增映射</h2>
+    <form action="/mapping/add" method="POST" class="form">
+        <div class="form-row">
+            <div class="form-group">
+                <label>备注名称</label>
+                <input type="text" name="name" placeholder="如：主仓库→测试群" required>
+            </div>
+            <div class="form-group">
+                <label>Webhook Token <small>（留空自动生成）</small></label>
+                <div class="input-with-btn">
+                    <input type="text" name="gitlab_token" id="new_token" placeholder="留空自动生成">
+                    <button type="button" class="btn btn-sm" onclick="generateToken('new_token')">生成</button>
+                </div>
+            </div>
+        </div>
+        <div class="form-row">
+            <div class="form-group flex-2">
+                <label>企业微信 Webhook URL</label>
+                <input type="url" name="wechat_url" placeholder="https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=..." required>
+            </div>
+            <div class="form-group">
+                <label>监听事件 <small>（逗号分隔，* 表示全部）</small></label>
+                <input type="text" name="events" value="*" placeholder="push,merge_request,pipeline">
+            </div>
+        </div>
+        <button type="submit" class="btn btn-primary">添加</button>
+    </form>
+</div>
+
+<!-- 映射列表 -->
+<div class="card">
+    <h2>📋 映射列表</h2>
+    {% if mappings %}
+    <div class="table-wrap">
+        <table>
+            <thead>
+                <tr>
+                    <th>名称</th>
+                    <th>Webhook 地址</th>
+                    <th>企微 URL</th>
+                    <th>事件</th>
+                    <th>状态</th>
+                    <th>操作</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for m in mappings %}
+                <tr>
+                    <td><strong>{{ m.name }}</strong></td>
+                    <td>
+                        <code class="token-display">/webhook/{{ m.gitlab_token }}</code>
+                        <button class="btn btn-xs" onclick="copyText('{{ request.host_url }}webhook/{{ m.gitlab_token }}')">复制</button>
+                    </td>
+                    <td class="url-cell" title="{{ m.wechat_url }}">{{ m.wechat_url[:40] }}{% if m.wechat_url|length > 40 %}...{% endif %}</td>
+                    <td><span class="tag">{{ m.events }}</span></td>
+                    <td>
+                        {% if m.enabled %}
+                        <span class="status-on">启用</span>
+                        {% else %}
+                        <span class="status-off">禁用</span>
+                        {% endif %}
+                    </td>
+                    <td class="actions">
+                        <button class="btn btn-sm btn-success" onclick="testMapping({{ m.id }})">测试</button>
+                        <button class="btn btn-sm" onclick="editMapping('{{ m.id }}', '{{ m.name }}', '{{ m.gitlab_token }}', '{{ m.wechat_url }}', '{{ m.events }}')">编辑</button>
+                        <form action="/mapping/{{ m.id }}/delete" method="POST" style="display:inline" onsubmit="return confirmDelete(this)">
+                            <button type="submit" class="btn btn-sm btn-danger">删除</button>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="empty">暂无映射，请添加</div>
+    {% endif %}
+</div>
+
+<!-- 使用说明 -->
+<div class="card">
+    <h2>📖 使用说明</h2>
+    <div class="help">
+        <p><strong>1.</strong> 在上方添加映射，填写企微机器人 Webhook URL</p>
+        <p><strong>2.</strong> 复制生成的 Webhook 地址</p>
+        <p><strong>3.</strong> 在 GitLab 项目 → Settings → Webhooks 中粘贴地址</p>
+        <p><strong>4.</strong> 选择需要的事件类型（Push、MR、Pipeline 等）</p>
+        <p><strong>5.</strong> 点击"测试"验证企微是否收到消息</p>
+        <p class="tip">💡 事件过滤：填写 <code>push,merge_request,pipeline</code> 只接收指定事件</p>
+    </div>
+</div>
+
+<!-- 编辑弹窗 -->
+<div id="editModal" class="modal" style="display:none">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>编辑映射</h3>
+            <button class="modal-close" onclick="closeModal()">&times;</button>
+        </div>
+        <form id="editForm" method="POST" class="form">
+            <input type="hidden" id="edit_id" name="mapping_id">
+            <div class="form-group">
+                <label>备注名称</label>
+                <input type="text" id="edit_name" name="name" required>
+            </div>
+            <div class="form-group">
+                <label>Webhook Token</label>
+                <input type="text" id="edit_gitlab_token" name="gitlab_token" required>
+            </div>
+            <div class="form-group">
+                <label>企业微信 Webhook URL</label>
+                <input type="url" id="edit_wechat_url" name="wechat_url" required>
+            </div>
+            <div class="form-group">
+                <label>监听事件</label>
+                <input type="text" id="edit_events" name="events">
+            </div>
+            <div class="form-group">
+                <label>
+                    <input type="checkbox" name="enabled" checked> 启用
+                </label>
+            </div>
+            <div class="form-actions">
+                <button type="button" class="btn" onclick="closeModal()">取消</button>
+                <button type="submit" class="btn btn-primary">保存</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    // 动态设置编辑表单的 action
+    document.getElementById('edit_id').addEventListener('change', function() {
+        document.getElementById('editForm').action = '/mapping/' + this.value + '/edit';
+    });
+
+    function editMapping(id, name, token, url, events) {
+        document.getElementById('edit_id').value = id;
+        document.getElementById('editForm').action = '/mapping/' + id + '/edit';
+        document.getElementById('edit_name').value = name;
+        document.getElementById('edit_gitlab_token').value = token;
+        document.getElementById('edit_wechat_url').value = url;
+        document.getElementById('edit_events').value = events;
+        document.getElementById('editModal').style.display = 'flex';
+    }
+
+    function copyText(text) {
+        navigator.clipboard.writeText(text).then(() => {
+            // 临时改变按钮文字
+            const btn = event.target;
+            const orig = btn.textContent;
+            btn.textContent = '已复制';
+            setTimeout(() => btn.textContent = orig, 1500);
+        });
+    }
+</script>
+{% endblock %}

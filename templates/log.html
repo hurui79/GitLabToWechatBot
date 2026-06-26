@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% block title %}推送日志 - GitLab → 企业微信{% endblock %}
+{% block content %}
+<div class="page-header">
+    <h1>推送日志</h1>
+    <p class="subtitle">共 {{ total }} 条记录</p>
+</div>
+
+<div class="card">
+    {% if logs %}
+    <div class="table-wrap">
+        <table>
+            <thead>
+                <tr>
+                    <th>时间</th>
+                    <th>映射</th>
+                    <th>事件类型</th>
+                    <th>项目</th>
+                    <th>状态</th>
+                    <th>消息</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for log in logs %}
+                <tr>
+                    <td class="time-cell">{{ log.created_at }}</td>
+                    <td>{{ log.mapping_name or '-' }}</td>
+                    <td><span class="tag">{{ log.event_type }}</span></td>
+                    <td>{{ log.project or '-' }}</td>
+                    <td>
+                        {% if log.status == 'success' %}
+                        <span class="status-on">成功</span>
+                        {% else %}
+                        <span class="status-off">失败</span>
+                        {% endif %}
+                    </td>
+                    <td class="msg-cell" title="{{ log.message }}">{{ log.message[:60] if log.message else '-' }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- 分页 -->
+    {% if total_pages > 1 %}
+    <div class="pagination">
+        {% if page > 1 %}
+        <a href="/logs?page={{ page - 1 }}" class="btn btn-sm">上一页</a>
+        {% endif %}
+        <span class="page-info">{{ page }} / {{ total_pages }}</span>
+        {% if page < total_pages %}
+        <a href="/logs?page={{ page + 1 }}" class="btn btn-sm">下一页</a>
+        {% endif %}
+    </div>
+    {% endif %}
+    {% else %}
+    <div class="empty">暂无日志记录</div>
+    {% endif %}
+</div>
+{% endblock %}

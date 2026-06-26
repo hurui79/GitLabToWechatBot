@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}GitLab → 企业微信{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <nav class="nav">
+        <div class="nav-inner">
+            <a href="/" class="nav-brand">🔔 GitLab → 企业微信</a>
+            <div class="nav-links">
+                <a href="/">配置管理</a>
+                <a href="/logs">推送日志</a>
+            </div>
+        </div>
+    </nav>
+    <main class="container">
+        {% block content %}{% endblock %}
+    </main>
+    <script>
+        // 通用 fetch 封装
+        async function postAction(url, body) {
+            const resp = await fetch(url, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+                body: body ? new URLSearchParams(body) : ''
+            });
+            return resp.json ? resp.json() : resp;
+        }
+
+        // 测试发送
+        async function testMapping(id) {
+            const btn = event.target;
+            btn.disabled = true;
+            btn.textContent = '发送中...';
+            try {
+                const resp = await fetch(`/mapping/${id}/test`, {method: 'POST'});
+                const data = await resp.json();
+                alert(data.message);
+            } catch(e) {
+                alert('请求失败: ' + e.message);
+            }
+            btn.disabled = false;
+            btn.textContent = '测试';
+        }
+
+        // 生成 token
+        async function generateToken(inputId) {
+            const resp = await fetch('/api/generate_token');
+            const data = await resp.json();
+            document.getElementById(inputId).value = data.token;
+        }
+
+        // 删除确认
+        function confirmDelete(form) {
+            if (confirm('确定要删除这条映射吗？')) {
+                form.submit();
+            }
+            return false;
+        }
+
+        // 编辑弹窗
+        function editMapping(id, name, token, url, events) {
+            document.getElementById('edit_id').value = id;
+            document.getElementById('edit_name').value = name;
+            document.getElementById('edit_gitlab_token').value = token;
+            document.getElementById('edit_wechat_url').value = url;
+            document.getElementById('edit_events').value = events;
+            document.getElementById('editModal').style.display = 'flex';
+        }
+
+        function closeModal() {
+            document.getElementById('editModal').style.display = 'none';
+        }
+    </script>
+</body>
+</html>
