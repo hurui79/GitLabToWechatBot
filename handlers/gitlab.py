@@ -66,12 +66,26 @@ def _format_push(data):
         lines.append("> ")
         for c in commits[:10]:  # 最多显示10条
             cid = c.get('id', '')[:8]
-            title = c.get('title', '')
+            # 优先用 message（完整信息），回退到 title
+            message = c.get('message', c.get('title', ''))
             url = c.get('url', '')
+            # 处理多行：第一行作为标题，后续行作为详情
+            msg_lines = [l.strip() for l in message.splitlines() if l.strip()]
+            first_line = msg_lines[0] if msg_lines else ''
+            detail_lines = msg_lines[1:] if len(msg_lines) > 1 else []
+
+            # 提交标题行
             if url:
-                lines.append(f"> - [`{cid}`]({url}) {title}")
+                lines.append(f"> - [`{cid}`]({url}) {first_line}")
             else:
-                lines.append(f"> - `{cid}` {title}")
+                lines.append(f"> - `{cid}` {first_line}")
+
+            # 如果有详情，缩进显示
+            for dl in detail_lines[:5]:  # 最多5行详情
+                # 截断过长的行
+                if len(dl) > 80:
+                    dl = dl[:80] + '...'
+                lines.append(f">   {dl}")
         if len(commits) > 10:
             lines.append(f"> - ...还有 {len(commits) - 10} 条提交")
 
