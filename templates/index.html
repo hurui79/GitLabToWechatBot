@@ -75,7 +75,13 @@
                     </td>
                     <td class="actions">
                         <button class="btn btn-sm btn-success" onclick="testMapping({{ m.id }})">测试</button>
-                        <button class="btn btn-sm" onclick="editMapping('{{ m.id }}', '{{ m.name }}', '{{ m.gitlab_token }}', '{{ m.wechat_url }}', '{{ m.events }}')">编辑</button>
+                        <button class="btn btn-sm edit-btn"
+                                data-id="{{ m.id }}"
+                                data-name="{{ m.name }}"
+                                data-token="{{ m.gitlab_token }}"
+                                data-url="{{ m.wechat_url }}"
+                                data-events="{{ m.events }}"
+                                data-enabled="{{ m.enabled }}">编辑</button>
                         <form action="/mapping/{{ m.id }}/delete" method="POST" style="display:inline" onsubmit="return confirmDelete(this)">
                             <button type="submit" class="btn btn-sm btn-danger">删除</button>
                         </form>
@@ -133,7 +139,7 @@
             </div>
             <div class="form-group">
                 <label>
-                    <input type="checkbox" name="enabled" checked> 启用
+                    <input type="checkbox" id="edit_enabled" name="enabled" checked> 启用
                 </label>
             </div>
             <div class="form-actions">
@@ -151,15 +157,20 @@
         return idx >= 0 ? url.substring(idx + 4) : url;
     }
 
-    function editMapping(id, name, token, url, events) {
-        document.getElementById('edit_id').value = id;
-        document.getElementById('editForm').action = '/mapping/' + id + '/edit';
-        document.getElementById('edit_name').value = name;
-        document.getElementById('edit_gitlab_token').value = token;
-        document.getElementById('edit_wechat_key').value = extractKey(url);
-        document.getElementById('edit_events').value = events;
-        document.getElementById('editModal').style.display = 'flex';
-    }
+    // 通过 data 属性绑定编辑事件
+    document.querySelectorAll('.edit-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const d = this.dataset;
+            document.getElementById('edit_id').value = d.id;
+            document.getElementById('editForm').action = '/mapping/' + d.id + '/edit';
+            document.getElementById('edit_name').value = d.name;
+            document.getElementById('edit_gitlab_token').value = d.token;
+            document.getElementById('edit_wechat_key').value = extractKey(d.url);
+            document.getElementById('edit_events').value = d.events;
+            document.getElementById('edit_enabled').checked = d.enabled === '1';
+            document.getElementById('editModal').style.display = 'flex';
+        });
+    });
 
     function copyText(elementId) {
         const el = document.getElementById(elementId);
